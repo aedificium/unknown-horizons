@@ -740,13 +740,10 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 	def _get_random_background(self):
 		"""Randomly select a background image to use through out the game menu."""
 		available_images = glob.glob('content/gui/images/background/mainmenu/bg_*.png')
-		#get latest background
 		latest_background = horizons.main.fife.get_uh_setting("LatestBackground")
-		#if there is a latest background then remove it from available list
 		if latest_background is not None:
 			available_images.remove(latest_background)
 		background_choice = random.choice(available_images)
-		#save current background choice
 		horizons.main.fife.set_uh_setting("LatestBackground", background_choice)
 		horizons.main.fife.save_settings()
 		return background_choice
