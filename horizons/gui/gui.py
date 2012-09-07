@@ -214,25 +214,15 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 		@param sanity_criteria: explain which names are allowed to the user
 		@return: Path to savegamefile or None"""
 		assert mode in ('save', 'load', 'mp_load', 'mp_save')
-		map_files, map_file_display = None, None
 		args = mode, sanity_checker, sanity_criteria # for reshow
 		mp = mode.startswith('mp_')
 		if mp:
 			mode = mode[3:]
 		# below this line, mp_load == load, mp_save == save
-		if mode == 'load':
-			if not mp:
-				map_files, map_file_display = SavegameManager.get_saves()
-			else:
-				map_files, map_file_display = SavegameManager.get_multiplayersaves()
-			if not map_files:
-				self.show_popup(_("No saved games"), _("There are no saved games to load."))
-				return
-		else: # don't show autosave and quicksave on save
-			if not mp:
-				map_files, map_file_display = SavegameManager.get_regular_saves()
-			else:
-				map_files, map_file_display = SavegameManager.get_multiplayersaves()
+		self.map_files, self.map_file_display = self._get_map_files(mode, mp)
+		if not self.map_files:
+			self.show_popup(_("No saved games"), _("There are no saved games to load."))
+			return
 
 		# Prepare widget
 		if mode == 'save':
@@ -279,14 +269,14 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 			if self.saveload.collectData('savegamelist') == -1: # set blank if nothing is selected
 				self.saveload.findChild(name="savegamefile").text = u""
 			else:
-				savegamefile = map_file_display[self.saveload.collectData('savegamelist')]
+				savegamefile = self.map_file_display[self.saveload.collectData('savegamelist')]
 				self.saveload.distributeData({'savegamefile': savegamefile})
 
-		self.saveload.distributeInitialData({'savegamelist': map_file_display})
+		self.saveload.distributeInitialData({'savegamelist': self.map_file_display})
 		# Select first item when loading, nothing when saving
 		selected_item = -1 if mode == 'save' else 0
 		self.saveload.distributeData({'savegamelist': selected_item})
-		cb_details = self._create_show_savegame_details(self.saveload, map_files, 'savegamelist')
+		cb_details = self._create_show_savegame_details(self.saveload, self.map_files, 'savegamelist')
 		update_details = Callback.ChainedCallbacks(cb_details, tmp_selected_changed)
 		update_details() # Refresh data on start
 		self.saveload.mapEvents({'savegamelist/action': update_details})
@@ -295,22 +285,23 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 		bind = {
 			OkButton.DEFAULT_NAME     : True,
 			CancelButton.DEFAULT_NAME : False,
-			DeleteButton.DEFAULT_NAME : 'delete'
 		}
 
-		retval = self.show_dialog(self.current, bind)
-		if not retval: # cancelled
-			self.current = old_current
-			return
-
-		if retval == 'delete':
-			# delete button was pressed. Apply delete and reshow dialog, delegating the return value
-			delete_retval = self._delete_savegame(map_files)
-			if delete_retval:
-				self.saveload.distributeData({'savegamelist' : -1})
-				update_details()
+		def _on_delete_press():
+			# Apply delete and reshow dialog, delegating the return value
+			did_delete = self._delete_savegame(available_savegame_files=self.map_files)
+			if not did_delete:
+				return # either cancelled by player or error while removing file
+			# Update available savegames, select first item or none again
+			self.saveload.distributeData({'savegamelist' : selected_item})
+			self.map_files, self.map_file_display = self._get_map_files(mode, mp)
+			update_details()
 		self.saveload.findChild(name=DeleteButton.DEFAULT_NAME).capture(_on_delete_press)
-		self.show_dialog(self.saveload, bind)
+
+		did_cancel = not self.show_dialog(self.saveload, bind)
+		if did_cancel:
+			self.saveload.hide()
+			return
 
 		if mode == 'save': # return from textfield
 			selected_savegame = self.saveload.collectData('savegamefile')
@@ -318,7 +309,7 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 				self.show_error_popup(windowtitle=_("No filename given"),
 				                      description=_("Please enter a valid filename."))
 				return self.show_select_savegame(*args) # reshow dialog
-			elif selected_savegame in map_file_display: # savegamename already exists
+			elif selected_savegame in self.map_file_display: # savegamename already exists
 				#xgettext:python-format
 				message = _("A savegame with the name '{name}' already exists.").format(
 				             name=selected_savegame) + u"\n" + _('Overwrite it?')
@@ -332,7 +323,7 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 		else: # return selected item from list
 			selected_savegame = self.saveload.collectData('savegamelist')
 			assert selected_savegame != -1, "No savegame selected in savegamelist"
-			selected_savegame = map_files[selected_savegame]
+			selected_savegame = self.map_files[selected_savegame]
 
 		if mp and mode == 'load': # also name
 			gamename_textfield = self.saveload.findChild(name="gamename")
@@ -409,6 +400,17 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 				pychan.tools.applyOnlySuitable(callback, event=event, widget=btn)
 			# can't guess a default action here
 
+	def _get_map_files(self, mode, mp):
+		if mode == 'load':
+			if not mp:
+				return SavegameManager.get_saves()
+			else:
+				return SavegameManager.get_multiplayersaves()
+		elif mode == 'save': # don't show autosave and quicksave on save
+			if not mp:
+				return SavegameManager.get_regular_saves()
+			else:
+				return SavegameManager.get_multiplayersaves()
 
 	def show_popup(self, windowtitle, message, show_cancel_button=False, size=0, modal=True):
 		"""Displays a popup with the specified text
@@ -519,7 +521,7 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 			pass # only used for some widgets, e.g. pause
 
 	def hide_all_widgets(self):
-		for widget in (self.current, self.current_dialog, self.mainmenu):
+		for widget in (self.current, self.current_dialog, self.mainmenu, self.saveload):
 			if widget:
 				widget.hide()
 
@@ -649,17 +651,16 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 			gui.adaptLayout()
 		return tmp_show_details
 
-	def _delete_savegame(self, map_files):
-		"""Deletes the selected savegame if the user confirms
-		self.saveload has to contain the widget "savegamelist"
-		@param map_files: list of files that corresponds to the entries of 'savegamelist'
+	def _delete_savegame(self, available_savegame_files):
+		"""Deletes the selected savegame if the user confirms.
+		@param available_savegame_files: list of files that corresponds to the entries of 'savegamelist'
 		@return: True if something was deleted, else False
 		"""
 		selected_item = self.saveload.collectData("savegamelist")
-		if selected_item == -1 or selected_item >= len(map_files):
+		if selected_item == -1 or selected_item >= len(available_savegame_files):
 			self.show_popup(_("No file selected"), _("You need to select a savegame to delete."))
 			return False
-		selected_file = map_files[selected_item]
+		selected_file = available_savegame_files[selected_item]
 		#xgettext:python-format
 		message = _("Do you really want to delete the savegame '{name}'?").format(
 		             name=SavegameManager.get_savegamename_from_filename(selected_file))
