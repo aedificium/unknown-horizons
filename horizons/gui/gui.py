@@ -75,14 +75,17 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 	def __init__(self):
 		self.mainlistener = MainListener(self)
 		self.current = None # currently active window
+		self.current_dialog = None # currently active dialog
+		#TODO get rid of at least one of the above
+		self.dialog_executed = False #TODO get rid of this as well
+
 		self.widgets = LazyWidgetsDict(self.styles) # access widgets with their filenames without '.xml'
 		build_help_strings(self.widgets['help'])
 		self.help_dlg = self.widgets['help']
 		self.help_dlg.displayed = False
-		self.session = None
-		self.current_dialog = None
+		self.saveload = self.widgets['select_savegame']
 
-		self.dialog_executed = False
+		self.session = None
 
 		self._background_image = self._get_random_background()
 		self.mainmenu = self.widgets['mainmenu']
@@ -232,7 +235,6 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 				map_files, map_file_display = SavegameManager.get_multiplayersaves()
 
 		# Prepare widget
-		self.saveload = self.widgets['select_savegame']
 		if mode == 'save':
 			helptext = _('Save game')
 		elif mode == 'load':
