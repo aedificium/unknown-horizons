@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<Container name="menu"  size="800,600"  position_technique="automatic">
+<Container name="spmenu"  size="800,600"  position_technique="automatic">
 	<Icon image="content/gui/images/background/book.png" />
 
 	<Container size="320,510"  position="60,46">

@@ -89,8 +89,7 @@ def test_multiplayer(gui):
 	yield
 
 	gui.trigger('menu', 'startMulti')
-	yield # TODO find out why it fails without yield
-	gui.trigger('menu', 'cancel')
+	gui.trigger('mpmenu', 'cancel')
 
 	yield TestFinished
 
@@ -101,7 +100,7 @@ def test_singleplayer(gui):
 	yield
 
 	gui.trigger('menu', 'startSingle')
-	gui.trigger('menu', 'cancel')
+	gui.trigger('spmenu', 'cancel')
 	
 	yield TestFinished
 
