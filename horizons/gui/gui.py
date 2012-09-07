@@ -284,7 +284,7 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 		# Select first item when loading, nothing when saving
 		selected_item = -1 if mode == 'save' else 0
 		self.saveload.distributeData({'savegamelist': selected_item})
-		cb_details = Gui._create_show_savegame_details(self.saveload, map_files, 'savegamelist')
+		cb_details = self._create_show_savegame_details(self.saveload, map_files, 'savegamelist')
 		update_details = Callback.ChainedCallbacks(cb_details, tmp_selected_changed)
 		update_details() # Refresh data on start
 		self.saveload.mapEvents({'savegamelist/action': update_details})
@@ -661,14 +661,14 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 		#xgettext:python-format
 		message = _("Do you really want to delete the savegame '{name}'?").format(
 		             name=SavegameManager.get_savegamename_from_filename(selected_file))
-		if self.show_popup(_("Confirm deletion"), message, show_cancel_button=True):
-			try:
-				os.unlink(selected_file)
-				return True
-			except:
-				self.show_popup(_("Error!"), _("Failed to delete savefile!"))
-				return False
-		else: # player cancelled deletion
+		really_delete = self.show_popup(_("Confirm deletion"), message, show_cancel_button=True)
+		if not really_delete: # player cancelled deletion
+			return False
+		try:
+			os.unlink(selected_file)
+			return True
+		except OSError as err:
+			self.show_popup(_("Error!"), _("Failed to delete savefile!") + "\n%s" % err)
 			return False
 
 	def get_random_background_by_button(self):
