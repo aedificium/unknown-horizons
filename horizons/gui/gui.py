@@ -68,9 +68,8 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 	  'playerdataselection' : 'book',
 	  'aidataselection' : 'book',
 	  'select_savegame': 'book',
-	  'ingame_pause': 'book',
+	  'ingame_pause': 'book', # kept here and not in ingamegui because it's centered
 	  'game_settings' : 'book',
-#	  'credits': 'book',
 	  }
 
 	def __init__(self):
@@ -83,7 +82,6 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 
 		self.dialog_executed = False
 
-		self.__pause_displayed = False
 		self._background_image = self._get_random_background()
 		self.mainmenu = self.widgets['mainmenu']
 
@@ -117,65 +115,7 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 		self.on_escape = self.show_quit
 
 	def toggle_pause(self):
-		"""Shows in-game pause menu if the game is currently not paused.
-		Else unpauses and hides the menu. Multiple layers of the 'paused' concept exist;
-		if two widgets are opened which would both pause the game, we do not want to
-		unpause after only one of them is closed. Uses PauseCommand and UnPauseCommand.
-		"""
-		# TODO: logically, this now belongs to the ingame_gui (it used to be different)
-		#       this manifests itself by the need for the __pause_displayed hack below
-		#       in the long run, this should be moved, therefore eliminating the hack, and
-		#       ensuring correct setup/teardown.
-		if self.__pause_displayed:
-			self.__pause_displayed = False
-			self.hide()
-			self.current = None
-			UnPauseCommand(suggestion=True).execute(self.session)
-			self.on_escape = self.toggle_pause
-
-		else:
-			self.__pause_displayed = True
-			# reload the menu because caching creates spacing problems
-			# see http://trac.unknown-horizons.org/t/ticket/1047
-			self.widgets.reload('ingamemenu')
-			def do_load():
-				did_load = horizons.main.load_game()
-				if did_load:
-					self.__pause_displayed = False
-			def do_quit():
-				did_quit = self.quit_session()
-				if did_quit:
-					self.__pause_displayed = False
-			events = { # needed twice, save only once here
-				'e_load' : do_load,
-				'e_save' : self.save_game,
-				'e_sett' : self.show_settings,
-				'e_help' : self.on_help,
-				'e_start': self.toggle_pause,
-				'e_quit' : do_quit,
-			}
-			self._switch_current_widget('ingamemenu', center=True, show=False, event_map={
-				  # icons
-				'loadgameButton' : events['e_load'],
-				'savegameButton' : events['e_save'],
-				'settingsLink'   : events['e_sett'],
-				'helpLink'       : events['e_help'],
-				'startGame'      : events['e_start'],
-				'closeButton'    : events['e_quit'],
-				# labels
-				'loadgame' : events['e_load'],
-				'savegame' : events['e_save'],
-				'settings' : events['e_sett'],
-				'help'     : events['e_help'],
-				'start'    : events['e_start'],
-				'quit'     : events['e_quit'],
-			})
-
-			self.show_modal_background()
-			self.current.show()
-
-			PauseCommand(suggestion=True).execute(self.session)
-			self.on_escape = self.toggle_pause
+		self.session.ingame_gui.toggle_pause()
 
 # what happens on button clicks
 

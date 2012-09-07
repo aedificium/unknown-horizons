@@ -42,7 +42,7 @@ from horizons.gui.util import LazyWidgetsDict
 from horizons.constants import BUILDINGS, GUI
 from horizons.command.uioptions import RenameObject
 from horizons.command.misc import Chat
-from horizons.command.game import SpeedDownCommand, SpeedUpCommand
+from horizons.command.game import SpeedDownCommand, SpeedUpCommand, PauseCommand, UnPauseCommand
 from horizons.gui.tabs.tabinterface import TabInterface
 from horizons.gui.tabs import MainSquareOverviewTab
 from horizons.component.namedcomponent import SettlementNameComponent, NamedComponent
@@ -119,7 +119,7 @@ class IngameGui(LivingObject):
 			'destroy_tool' : self.session.toggle_destroy_tool,
 			'build' : self.show_build_menu,
 			'diplomacyButton' : self.show_diplomacy_menu,
-			'gameMenuButton' : self.main_gui.toggle_pause,
+			'gameMenuButton' : self.toggle_pause,
 			'logbook' : self.logbook.toggle_visibility
 		})
 		minimap.show()
@@ -134,6 +134,8 @@ class IngameGui(LivingObject):
 		SettlerUpdate.subscribe(self._on_settler_level_change)
 		SettlerInhabitantsChanged.subscribe(self._on_settler_inhabitant_change)
 		HoverSettlementChanged.subscribe(self._cityinfo_set)
+		self.on_escape = self.toggle_pause
+		self.pause_menu = None
 
 	def _on_resourcebar_resize(self, message):
 		self._update_cityinfo_position()
@@ -154,6 +156,7 @@ class IngameGui(LivingObject):
 		for w in self.widgets.itervalues():
 			if w.parent is None:
 				w.hide()
+		self.pause_menu = None
 		self.message_widget = None
 		self.tabwidgets = None
 		self.minimap = None
@@ -166,6 +169,34 @@ class IngameGui(LivingObject):
 		SettlerInhabitantsChanged.unsubscribe(self._on_settler_inhabitant_change)
 
 		super(IngameGui, self).end()
+
+	def toggle_pause(self):
+		"""Shows in-game pause menu if the game is currently not paused.
+		Else unpauses and hides the menu. Multiple layers of the 'paused' concept exist;
+		if two widgets are opened which would both pause the game, we do not want to
+		unpause after only one of them is closed. Uses PauseCommand and UnPauseCommand.
+		"""
+		if self.pause_menu:
+			self.pause_menu.hide()
+			self.pause_menu = None
+			UnPauseCommand(suggestion=True).execute(self.session)
+		else:
+			events = dict()
+			events['loadgame'] = events['loadgameButton'] = horizons.main.load_game
+			events['savegame'] = events['savegameButton'] = self.main_gui.save_game
+			events['settings'] = events['settingsLink']   = self.main_gui.show_settings
+			events['help']     = events['helpLink']       = self.main_gui.on_help
+			events['start']    = events['startGame']      = self.toggle_pause
+			events['quit']     = events['closeButton']    = self.main_gui.quit_session
+
+			# reload the menu because caching creates spacing problems
+			# see http://trac.unknown-horizons.org/t/ticket/1047
+			self.main_gui.widgets.reload('ingamemenu')
+			self.pause_menu = self.main_gui.widgets['ingamemenu']
+			self.pause_menu.mapEvents(events)
+
+			PauseCommand(suggestion=True).execute(self.session)
+			self.main_gui.show_dialog(self.pause_menu, {}, modal=True)
 
 	def _cityinfo_set(self, message):
 		"""Sets the city name at top center of screen.
@@ -436,7 +467,7 @@ class IngameGui(LivingObject):
 
 	def _hide_change_name_dialog(self):
 		"""Escapes the change_name dialog"""
-		self.main_gui.on_escape = self.main_gui.toggle_pause
+		self.main_gui.on_escape = self.toggle_pause
 		self.widgets['change_name'].hide()
 
 	def change_name(self, instance):
@@ -467,7 +498,7 @@ class IngameGui(LivingObject):
 
 	def _hide_save_map_dialog(self):
 		"""Closes the map saving dialog."""
-		self.main_gui.on_escape = self.main_gui.toggle_pause
+		self.main_gui.on_escape = self.toggle_pause
 		self.widgets['save_map'].hide()
 
 	def save_map(self):
@@ -542,7 +573,7 @@ class IngameGui(LivingObject):
 
 	def _hide_chat_dialog(self):
 		"""Escapes the chat dialog"""
-		self.main_gui.on_escape = self.main_gui.toggle_pause
+		self.main_gui.on_escape = self.toggle_pause
 		self.widgets['chat'].hide()
 
 	def _do_chat(self):
