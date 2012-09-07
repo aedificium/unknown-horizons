@@ -205,7 +205,7 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 				PauseCommand().execute(self.session)
 			if self.session is not None:
 				self.session.ingame_gui.on_escape() # close dialogs that might be open
-			self.show_dialog(help_dlg, {OkButton.DEFAULT_NAME : True})
+			self.show_dialog(help_dlg)
 			self.on_help() # toggle state
 		else:
 			self._help_is_displayed = False
@@ -245,7 +245,7 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 		introduces information for SoC applicants (if valid).
 		"""
 		AmbientSoundComponent.play_special("message")
-		self.show_dialog(self.widgets['call_for_support'], {OkButton.DEFAULT_NAME : True})
+		self.show_dialog(self.widgets['call_for_support'])
 
 	def show_credits(self, number=0):
 		"""Shows the credits dialog. """
@@ -263,7 +263,7 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 
 		if self.current_dialog is not None:
 			self.current_dialog.hide()
-		self.show_dialog(self.widgets['credits'+str(number)], {OkButton.DEFAULT_NAME : True})
+		self.show_dialog(self.widgets['credits'+str(number)])
 
 	def show_select_savegame(self, mode, sanity_checker=None, sanity_criteria=None):
 		"""Shows menu to select a savegame.
@@ -424,14 +424,16 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 	def is_visible(self):
 		return self.current is not None and self.current.isVisible()
 
-	def show_dialog(self, dlg, bind, event_map=None, modal=False):
-		"""Shows any pychan dialog.
+	def show_dialog(self, dlg, bind=None, event_map=None, modal=False):
+		"""Shows any pychan dialog. *bind* example: {'ok': callback, 'cancel': False}
 		@param dlg: dialog that is to be shown
-		@param bind: events that make the dialog return + return values{ 'ok': callback, 'cancel': callback }
+		@param bind: events that close the dialog and the respective return values
 		@param event_map: dictionary with callbacks for buttons. See pychan docu: pychan.widget.mapEvents()
 		@param modal: Whether to block user interaction while displaying the dialog
 		"""
 		self.current_dialog = dlg
+		if bind is None:
+			bind = {OkButton.DEFAULT_NAME: True}
 		if event_map is not None:
 			dlg.mapEvents(event_map)
 		if modal:
@@ -486,8 +488,7 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 			                                CancelButton.DEFAULT_NAME : False},
 			                        modal=modal)
 		else:
-			return self.show_dialog(popup, {OkButton.DEFAULT_NAME : True},
-			                        modal=modal)
+			return self.show_dialog(popup, modal=modal)
 
 	def show_error_popup(self, windowtitle, description, advice=None, details=None, _first=True):
 		"""Displays a popup containing an error message.
