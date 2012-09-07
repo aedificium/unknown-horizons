@@ -370,38 +370,43 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 		if bind is None:
 			bind = {OkButton.DEFAULT_NAME: True}
 		if event_map is not None:
-			dlg.mapEvents(event_map)
+			self.current_dialog.mapEvents(event_map)
 		if modal:
 			self.show_modal_background()
 
-		# handle escape and enter keypresses
-		def _on_keypress(event, dlg=dlg): # rebind to make sure this dlg is used
-			from horizons.engine import pychan_util
-			if event.getKey().getValue() == fife.Key.ESCAPE: # convention says use cancel action
-				btn = dlg.findChild(name=CancelButton.DEFAULT_NAME)
-				callback = pychan_util.get_button_event(btn) if btn else None
-				if callback:
-					pychan.tools.applyOnlySuitable(callback, event=event, widget=btn)
-				else:
-					# escape should hide the dialog default
-					horizons.main.fife.pychanmanager.breakFromMainLoop(returnValue=False)
-					dlg.hide()
-			elif event.getKey().getValue() == fife.Key.ENTER: # convention says use ok action
-				btn = dlg.findChild(name=OkButton.DEFAULT_NAME)
-				callback = pychan_util.get_button_event(btn) if btn else None
-				if callback:
-					pychan.tools.applyOnlySuitable(callback, event=event, widget=btn)
-				# can't guess a default action here
-
-		dlg.capture(_on_keypress, event_name="keyPressed")
+		self.current_dialog.capture(self._on_keypress, event_name="keyPressed")
 
 		# show that a dialog is being executed, this can sometimes require changes in program logic elsewhere
 		self.dialog_executed = True
-		ret = dlg.execute(bind)
+		dialog_return_value = self.current_dialog.execute(bind)
 		self.dialog_executed = False
+
 		if modal:
 			self.hide_modal_background()
-		return ret
+		return dialog_return_value
+
+	def _on_keypress(self, event):
+		"""Handles Esc and Enter keypresses in dialogs."""
+		from horizons.engine import pychan_util
+
+		if event.getKey().getValue() == fife.Key.ESCAPE:
+			# convention: If Esc was pressed, treat it as if Cancel was clicked
+			cancel_button = self.current_dialog.findChild(name=CancelButton.DEFAULT_NAME)
+			callback = pychan_util.get_button_event(cancel_button) if cancel_button else None
+			if callback:
+				pychan.tools.applyOnlySuitable(callback, event=event, widget=cancel_button)
+			else:
+				# Esc should hide the dialog if no Cancel callback was specified
+				self.current_dialog.hide()
+
+		elif event.getKey().getValue() == fife.Key.ENTER:
+			# convention: If Enter was pressed, treat it as if OK was clicked
+			btn = self.current_dialog.findChild(name=OkButton.DEFAULT_NAME)
+			callback = pychan_util.get_button_event(btn) if btn else None
+			if callback:
+				pychan.tools.applyOnlySuitable(callback, event=event, widget=btn)
+			# can't guess a default action here
+
 
 	def show_popup(self, windowtitle, message, show_cancel_button=False, size=0, modal=True):
 		"""Displays a popup with the specified text
