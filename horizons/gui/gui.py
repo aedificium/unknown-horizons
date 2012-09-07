@@ -357,9 +357,6 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 			DeleteButton.DEFAULT_NAME : 'delete'
 		}
 
-		if mode == 'save':
-			bind['savegamefile'] = True
-
 		retval = self.show_dialog(self.current, bind)
 		if not retval: # cancelled
 			self.current = old_current
