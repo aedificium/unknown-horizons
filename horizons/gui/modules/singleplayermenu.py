@@ -76,7 +76,7 @@ class SingleplayerMenu(object):
 		assert show in ('random', 'scenario', 'campaign', 'free_maps')
 		self.hide()
 		event_map = {
-			'cancel'    : Callback.ChainedCallbacks(self._save_player_name, self.show_main),
+			'cancel'    : Callback.ChainedCallbacks(self._save_player_name, self.hide),
 			'okay'      : self.start_single,
 			'scenario'  : Callback(self._select_single, show='scenario'),
 			'campaign'  : Callback(self._select_single, show='campaign'),
@@ -157,7 +157,7 @@ class SingleplayerMenu(object):
 			self._update_scenario_infos()
 
 		self.current.show()
-		self.on_escape = self.show_main
+		self.on_escape = self.hide
 
 	def start_single(self):
 		""" Starts a single player horizons. """

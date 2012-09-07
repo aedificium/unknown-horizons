@@ -86,7 +86,7 @@ class MultiplayerMenu(object):
 
 		refresh_worked = self.__refresh()
 		if not refresh_worked:
-			self.show_main()
+			self.hide()
 			return
 		self.current.findChild(name='gamelist').capture(self.__update_game_details)
 		self.current.findChild(name='showonlyownversion').capture(self.__show_only_own_version_toggle)
@@ -150,7 +150,7 @@ class MultiplayerMenu(object):
 			NetworkInterface().disconnect()
 		self.__apply_new_nickname()
 		self.__apply_new_color()
-		self.show_main()
+		self.hide()
 
 	def __leave_lobby(self):
 		"""Leave the game (when in lobby) and open multiplayer menu."""

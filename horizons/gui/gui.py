@@ -85,6 +85,7 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 
 		self.__pause_displayed = False
 		self._background_image = self._get_random_background()
+		self.mainmenu = self.widgets['mainmenu']
 
 		GuiAction.subscribe( self._on_gui_action )
 
@@ -92,7 +93,7 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 
 	def show_main(self):
 		"""Shows the main menu """
-		self._switch_current_widget('mainmenu', center=True, show=True, event_map={
+		self.mainmenu.mapEvents({
 			'startSingle'      : self.show_single, # first is the icon in menu
 			'start'            : self.show_single, # second is the lable in menu
 			'startMulti'       : self.show_multi,
@@ -111,7 +112,8 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 			'loadgame'         : horizons.main.load_game,
 			'changeBackground' : self.get_random_background_by_button
 		})
-
+		self.mainmenu.show()
+		self.mainmenu.findChild(name='background').image = self._background_image
 		self.on_escape = self.show_quit
 
 	def toggle_pause(self):
@@ -231,6 +233,7 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 				self.session.end()
 				self.session = None
 
+			self.hide_all_widgets()
 			self.show_main()
 			return True
 		else:
@@ -575,7 +578,13 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 		except AttributeError:
 			pass # only used for some widgets, e.g. pause
 
+	def hide_all_widgets(self):
+		for widget in (self.current, self.current_dialog, self.mainmenu):
+			if widget:
+				widget.hide()
+
 	def show_loading_screen(self):
+		self.hide_all_widgets()
 		self._switch_current_widget('loadingscreen', center=True, show=True)
 		# Add 'Quote of the Load' to loading screen:
 		qotl_type_label = self.current.findChild(name='qotl_type_label')
@@ -727,10 +736,8 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 	def get_random_background_by_button(self):
 		"""Randomly select a background image to use. This function is triggered by
 		change background button from main menu."""
-		#we need to redraw screen to apply changes.
-		self.hide()
 		self._background_image = self._get_random_background()
-		self.show_main()
+		self.mainmenu.findChild(name='background').image = self._background_image
 
 	def _get_random_background(self):
 		"""Randomly select a background image to use through out the game menu."""
