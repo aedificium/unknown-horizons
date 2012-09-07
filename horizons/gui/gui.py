@@ -77,6 +77,8 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 		self.current = None # currently active window
 		self.widgets = LazyWidgetsDict(self.styles) # access widgets with their filenames without '.xml'
 		build_help_strings(self.widgets['help'])
+		self.help_dlg = self.widgets['help']
+		self.help_dlg.displayed = False
 		self.session = None
 		self.current_dialog = None
 
@@ -134,24 +136,21 @@ class Gui(SingleplayerMenu, MultiplayerMenu):
 	_help_is_displayed = False
 	def on_help(self):
 		"""Called on help action.
-		Toggles help screen via static variable *help_is_displayed*.
+		Toggles help screen. Stores state in *displayed* property.
 		Can be called both from main menu and in-game interface.
 		"""
-		help_dlg = self.widgets['help']
-		if not self._help_is_displayed:
-			self._help_is_displayed = True
+		if self.help_dlg.displayed:
+			if self.session is not None and self.current != self.widgets['ingamemenu']:
+				UnPauseCommand().execute(self.session)
+			self.help_dlg.hide()
+		else:
 			# make game pause if there is a game and we're not in the main menu
 			if self.session is not None:
 				if self.current != self.widgets['ingamemenu']:
 					PauseCommand().execute(self.session)
 				self.session.ingame_gui.on_escape() # close dialogs that might be open
-			self.show_dialog(help_dlg)
-			self.on_help() # toggle state
-		else:
-			self._help_is_displayed = False
-			if self.session is not None and self.current != self.widgets['ingamemenu']:
-				UnPauseCommand().execute(self.session)
-			help_dlg.hide()
+			self.help_dlg.show()
+		self.help_dlg.displayed = not self.help_dlg.displayed
 
 	def show_quit(self):
 		"""Shows the quit dialog. Closes the game unless the dialog is cancelled."""
